@@ -24,6 +24,12 @@ Questo laboratorio permette di esplorare, sfruttare e mitigare le seguenti criti
 - **Blue Teaming (IPS):** Blocco dinamico delle minacce via `iptables` tramite analisi log in tempo reale.
 - **SSH Brute Force:** Sfruttamento della mancanza di Rate Limiting infrastrutturale tramite Hydra.
 
+## 🌐 Topologia di Rete e Ruoli
+L'infrastruttura è suddivisa in 3 componenti:
+- <img width="30px" src="https://skillicons.dev/icons?i=ubuntu"/> **Ubuntu** (server ospedaliero): ospita l'infrastruttura Pandora Shield e i container Docker.
+- <img width="60px" src="https://skillicons.dev/icons?i=apple,windows"/> **MacOS**/**Windows** (vittima): simula il medico che accede alla dashboard per consultare le diagnosi.
+- <img width="30px" src="https://skillicons.dev/icons?i=kali"/> **Kali Linux** (attaccante): postazione da cui vengono effettuati gli attacchi.
+
 ## 🛠️ Stack Tecnologico
 
 L'infrastruttura è containerizzata e isolata per garantire una riproducibilità sicura dei test.
