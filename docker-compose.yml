@@ -1,0 +1,50 @@
+# version: '3.8'
+
+services:
+  waf-proxy:
+    image: nginx:alpine
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./logs:/var/log/nginx
+    networks:
+      - public_net
+      - internal_net
+    depends_on:
+      - web-ui
+
+  web-ui:
+    build: ./web-ui
+    networks:
+      - internal_net
+    depends_on:
+      ai-engine:
+        condition: service_healthy
+    volumes:
+      - ./web-ui:/usr/src/app
+      - /usr/src/app/node_modules
+
+  ai-engine:
+    build: ./ollama
+    networks:
+      - internal_net
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep phi3 > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s 
+
+networks:
+  public_net:
+    driver: bridge
+  internal_net:
+    driver: bridge
+    internal: true
+
+volumes:
+  ollama_data:

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PANDORA SHIELD - Medical Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="status-bar">
+        <div>
+            🏥 PANDORA SHIELD | TERMINALE DIAGNOSTICO ATTIVO | UTENTE: <span id="user-display" style="color: var(--blue); margin-left: 5px;">CARICAMENTO...</span>
+        </div>
+        <button class="btn-logout" onclick="logout()">LOGOUT</button>
+    </div>
+
+    <div class="main-content" style="display: flex; gap: 20px; align-items: stretch; padding: 20px; height: calc(100vh - 48px);">
+        
+        <div class="glass-card" style="flex: 2; overflow-y: auto; text-align: left; padding: 30px;">
+            <h2 style="font-family: 'Rajdhani'; font-size: 1.5rem; color: var(--cyan); letter-spacing: 0.1em; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; margin-bottom: 20px;">
+                DATI CLINICI RISERVATI
+            </h2>
+
+            <div id="management-panel" style="background: rgba(0, 163, 255, 0.05); border: 1px dashed var(--glass-border); padding: 15px; border-radius: var(--radius-md); margin-bottom: 25px;">
+                <h4 style="font-family: 'DM Mono'; font-size: 0.7rem; color: var(--blue); margin-bottom: 10px; text-transform: uppercase;">✚ Registra Nuovo Referto</h4>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="new-paziente" placeholder="Paziente" class="chat-input-field" style="flex: 1.5; font-size: 0.8rem;">
+                    <input type="date" id="new-data" class="chat-input-field" style="flex: 1; font-size: 0.8rem;">
+                    <input type="text" id="new-referto" placeholder="Dettaglio Diagnosi..." class="chat-input-field" style="flex: 3; font-size: 0.8rem;">
+                    <button onclick="aggiungiPaziente()" class="btn" style="width: auto; padding: 0 20px; height: 38px;">INVIO</button>
+                </div>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>PAZIENTE</th>
+                        <th>REFERTO</th>
+                        <th style="width: 100px;">DATA</th>
+                        <th style="width: 80px;">AZIONE</th>
+                    </tr>
+                </thead>
+                <tbody id="diagnosi-table"></tbody>
+            </table>
+        </div>
+
+        <div class="glass-card" style="flex: 1; display: flex; flex-direction: column; padding: 25px; border-color: var(--glass-border-accent);">
+            <h3 style="font-family: 'DM Mono'; font-size: 0.8rem; color: var(--blue); margin-bottom: 15px; letter-spacing: 0.2em;">
+                ASSISTENTE AI: PANDORA
+            </h3>
+            
+            <div id="chat-history" class="chat-history" style="flex-grow: 1; margin-bottom: 15px; overflow-y: auto; max-height: calc(100vh - 220px); padding-right: 10px;" >
+                <div class="chat-msg-item">Sistema pronto. Come posso assisterla oggi, dottore?</div>
+            </div>
+
+            <div class="chat-input-group">
+                <input type="text" id="ai-prompt" class="chat-input-field" placeholder="Chiedi a Pandora...">
+                <button id="send-ai-btn" onclick="askAI()" class="btn" style="width: 60px; margin: 0; padding: 10px; border-radius: var(--radius-sm);">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const session = localStorage.getItem('user_session');
+        if (!session) {
+            window.location.href = '/login.html';
+        } else {
+            const user = JSON.parse(session);
+            document.getElementById('user-display').innerText = `${user.username.toUpperCase()} [${user.ruolo.toUpperCase()}]`;
+        }
+
+        async function caricaDiagnosi() {
+            try {
+                const response = await fetch('/api/diagnosi');
+                const dati = await response.json();
+                const tableBody = document.getElementById('diagnosi-table');
+                tableBody.innerHTML = dati.map(item => `
+                    <tr>
+                        <td style="color: var(--text-dim); font-size: 0.7rem;">#${item.id}</td>
+                        <td><span style="color: var(--text-primary); font-weight: 600;">${item.paziente}</span></td>
+                        <td style="color: var(--text-secondary); font-style: italic;">${item.referto}</td>
+                        <td style="font-size: 0.75rem; color: var(--cyan);">${new Date(item.data).toLocaleDateString()}</td>
+                        <td>
+                            <button onclick="eliminaPaziente(${item.id})" style="background:transparent; border:none; color:var(--red); cursor:pointer; font-family:'DM Mono'; font-size:0.6rem;">[ELIMINA]</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function aggiungiPaziente() {
+            const paziente = document.getElementById('new-paziente').value.trim();
+            const referto = document.getElementById('new-referto').value.trim();
+            let dataInput = document.getElementById('new-data').value;
+            if (!paziente || !referto) return alert("Dati incompleti.");
+            if (!dataInput) dataInput = new Date().toISOString().split('T')[0];
+            try {
+                const response = await fetch('/api/diagnosi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paziente, referto, data: dataInput })
+                });
+                if (response.ok) {
+                    document.getElementById('new-paziente').value = '';
+                    document.getElementById('new-referto').value = '';
+                    document.getElementById('new-data').value = '';
+                    caricaDiagnosi();
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        async function eliminaPaziente(id) {
+            if (!confirm(`Eliminare record #${id}?`)) return;
+            try {
+                const response = await fetch(`/api/diagnosi/${id}`, { method: 'DELETE' });
+                if (response.ok) caricaDiagnosi();
+            } catch (err) { console.error(err); }
+        }
+
+        async function askAI() {
+            const input = document.getElementById('ai-prompt');
+            const btn = document.getElementById('send-ai-btn');
+            const history = document.getElementById('chat-history');
+            const prompt = input.value.trim();
+            if (!prompt) return;
+
+            btn.disabled = true;
+            input.disabled = true;
+            history.innerHTML += `<div class="chat-msg-item" style="border-left-color: var(--text-dim); opacity: 0.8;">> <strong>UTENTE:</strong> ${prompt}</div>`;
+            input.value = '';
+
+            const responseId = "response-" + Date.now();
+            history.innerHTML += `<div class="chat-msg-item pandora-typing" id="${responseId}"><strong>PANDORA:</strong> Sto elaborando...</div>`;
+            history.scrollTop = history.scrollHeight;
+
+            const responseDiv = document.getElementById(responseId);
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: prompt })
+                });
+
+                if (!response.ok) throw new Error();
+                responseDiv.classList.remove('pandora-typing');
+                responseDiv.innerHTML = "<strong>PANDORA:</strong> ";
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let aiResponse = "";
+                let isCommand = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    aiResponse += decoder.decode(value, { stream: true });
+
+                    if (aiResponse.includes("[PANDORA_INSERT") || aiResponse.includes("[PANDORA_DELETE")) {
+                        isCommand = true;
+                        responseDiv.innerHTML = `<strong>PANDORA:</strong> <em style="color: var(--cyan);">Esecuzione protocollo di sistema...</em>`;
+                    } else if (!isCommand) {
+                        responseDiv.innerHTML = `<strong>PANDORA:</strong> ${aiResponse}`;
+                    }
+                    history.scrollTop = history.scrollHeight;
+                }
+
+                // Logica di Controllo Comandi
+                if (isCommand) {
+                    console.log("[DEBUG] Pandora ha generato un comando:", aiResponse);
+
+                    if (aiResponse.includes("[PANDORA_INSERT")) {
+                        const match = aiResponse.match(/\[PANDORA_INSERT\] (.*?) \|\|\| (.*)/);
+                        if (match) {
+                            console.log("[DEBUG] Esecuzione inserimento per:", match[1]);
+                            await fetch('/api/diagnosi', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ paziente: match[1].trim(), referto: match[2].trim() })
+                            });
+                            caricaDiagnosi();
+                            responseDiv.innerHTML = `<strong>PANDORA:</strong> ✅ Referto per <strong>${match[1]}</strong> registrato.`;
+                        }
+                    } else if (aiResponse.includes("[PANDORA_DELETE")) {
+                        const match = aiResponse.match(/\[PANDORA_DELETE id=["']?(\d+)["']?\]/);
+                        if (match) {
+                            const targetId = match[1];
+                            console.log("[DEBUG] Esecuzione cancellazione record ID:", targetId);
+                            const delResponse = await fetch(`/api/diagnosi/${targetId}`, { method: 'DELETE' });
+                            if (delResponse.ok) {
+                                caricaDiagnosi();
+                                responseDiv.innerHTML = `<strong>PANDORA:</strong> ⚠️ Record <strong>#${targetId}</strong> rimosso con successo.`;
+                            } else {
+                                console.error("[DEBUG] Errore server durante la cancellazione");
+                            }
+                        } else {
+                            console.warn("[DEBUG] Tag DELETE trovato ma ID non estratto. Controlla la sintassi di Pandora.");
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("[DEBUG] Errore fatale nello streaming:", err);
+                responseDiv.classList.remove('pandora-typing');
+                responseDiv.innerHTML = `<strong>PANDORA:</strong> <span style="color: var(--red);">Connessione interrotta.</span>`;
+            } finally {
+                btn.disabled = false; input.disabled = false; input.focus();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('user_session');
+            window.location.href = '/login.html';
+        }
+
+        caricaDiagnosi();
+    </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PANDORA SHIELD - Auth Terminal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-bg">
+    <div class="status-bar">
+        🏥 TELEERXPERT AR - PANDORA SHIELD | MEDICAL SECURE TERMINAL | STATUS: STANDBY
+    </div>
+
+    <div class="main-content">
+        <div class="glass-card">
+            <h1>TELEERXPERT AR</h1>
+            <p style="font-family: 'DM Mono', monospace; font-size: 1rem; color: var(--text-secondary); margin-bottom: 30px; letter-spacing: 0.1em;">
+                AUTENTICAZIONE PERSONALE SANITARIO
+            </p>
+
+            <form id="loginForm">
+                <div class="auth-box">
+                    <input type="text" id="username" placeholder="USERNAME" required>
+                    <input type="password" id="password" placeholder="PASSWORD" required>
+                    
+                    <button type="submit" class="btn">Effettua Login</button>
+                </div>
+            </form>
+
+            <p id="message" style="font-family: 'DM Mono', monospace; font-size: 0.8rem; margin-top: 20px; color: var(--red); min-height: 1.2em;"></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                    credentials: 'include' // Sblocca i Cookie
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('user_session', JSON.stringify(data.user));
+                    window.location.href = '/dashboard.html';
+                } else {
+                    document.getElementById('message').innerText = "⚠️ ACCESSO NEGATO: Credenziali non valide o utente inesistente.";
+                }
+            } catch (err) {
+                document.getElementById('message').innerText = "🔴 ERRORE DI CONNESSIONE AL SERVER";
+            }
+        });
+    </script>
+</body>
+</html>
