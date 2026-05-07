@@ -1,4 +1,4 @@
-# Pandora Shield - Medical Secure Terminal
+# Pandora Shield
 
 ![Badge Status](https://img.shields.io/badge/Status-Educational_Lab-blue)
 ![Badge Security](https://img.shields.io/badge/Security-Red/Blue_Teaming-red)
